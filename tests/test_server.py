@@ -20,6 +20,7 @@ from tidal_mcp.runtime import Runtime
 from tidal_mcp.server import create_server
 
 EXPECTED_TOOLS = {
+    "tidal_check_favorite_tracks",
     "tidal_auth_status",
     "tidal_search",
     "tidal_list_favorite_tracks",

@@ -34,6 +34,7 @@ from tidal_mcp.models import (
     TrackPage,
 )
 from tidal_mcp.runtime import Runtime
+from tidal_mcp.output import compact_output, check_favorites
 
 READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 LOCAL_PREVIEW = ToolAnnotations(
@@ -91,7 +92,7 @@ def _make_read_handler(runtime: Runtime, spec: ReadToolSpec) -> Any:
     handler.__name__ = spec.name
     handler.__doc__ = spec.description
     handler.__signature__ = _tool_signature(spec, CatalogResult)
-    return handler
+    return compact_output(handler)
 
 
 def _make_preview_handler(runtime: Runtime, spec: MutationToolSpec) -> Any:
@@ -155,12 +156,28 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
         version="1.0.1",
     )
 
+    @server.tool(title="Check favorite tracks", annotations=READ_ONLY)
+    async def tidal_check_favorite_tracks(
+        track_ids: Annotated[
+            list[Annotated[str, Field(min_length=1, max_length=100)]],
+            Field(min_length=1, max_length=100),
+        ],
+        max_pages: Annotated[int, Field(ge=1, le=200)] = 100,
+    ) -> dict[str, Any]:
+        """Check candidate track IDs without returning favorites. Incomplete reads yield unknown."""
+        try:
+            music_client = active_runtime.client()
+        except TidalMCPError as exc:
+            raise _as_tool_error(exc) from exc
+        return await asyncio.to_thread(check_favorites, music_client, track_ids, max_pages)
+
     @server.tool(title="Check TIDAL authentication", annotations=READ_ONLY)
     async def tidal_auth_status() -> AuthStatus:
         """Check the local TIDAL session without exposing OAuth credentials."""
         return await asyncio.to_thread(active_runtime.auth_status)
 
     @server.tool(title="Search the TIDAL catalog", annotations=READ_ONLY)
+    @compact_output
     async def tidal_search(
         query: Annotated[
             str,
@@ -190,6 +207,7 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
             raise _as_tool_error(exc) from exc
 
     @server.tool(title="List favorite TIDAL tracks", annotations=READ_ONLY)
+    @compact_output
     async def tidal_list_favorite_tracks(
         limit: Annotated[int, Field(ge=1, le=50)] = 20,
         offset: Annotated[int, Field(ge=0, le=100_000)] = 0,
@@ -205,6 +223,7 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
             raise _as_tool_error(exc) from exc
 
     @server.tool(title="List TIDAL playlists", annotations=READ_ONLY)
+    @compact_output
     async def tidal_list_playlists(
         limit: Annotated[int, Field(ge=1, le=50)] = 20,
         offset: Annotated[int, Field(ge=0, le=100_000)] = 0,
@@ -216,6 +235,7 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
             raise _as_tool_error(exc) from exc
 
     @server.tool(title="Read tracks from a TIDAL playlist", annotations=READ_ONLY)
+    @compact_output
     async def tidal_get_playlist_tracks(
         playlist_id: Annotated[str, Field(min_length=1, max_length=100)],
         limit: Annotated[int, Field(ge=1, le=50)] = 50,
@@ -233,6 +253,7 @@ def create_server(runtime: Runtime | None = None) -> MCPServer:
             raise _as_tool_error(exc) from exc
 
     @server.tool(title="Recommend TIDAL tracks", annotations=READ_ONLY)
+    @compact_output
     async def tidal_recommend_tracks(
         seed_track_ids: Annotated[
             list[str],

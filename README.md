@@ -38,6 +38,16 @@ Les écritures sont désactivées par défaut. Une fois activées, l'assistant d
 
 Exemple : « Propose une playlist à partir de mes favoris et montre-moi son contenu avant de la créer. »
 
+## Réponses compactes et économie de tokens
+
+Les outils de lecture du catalogue, de recherche, de listes et de recommandations acceptent `detail: "compact"` (par défaut) ou `detail: "detailed"`. Le mode compact retire les liens et certaines métadonnées secondaires ; il conserve les identifiants des éléments, titres, artistes, disponibilité lorsqu'elle est présente, pagination et provenance des recommandations. Le mode détaillé restitue la réponse complète.
+
+`tidal_check_favorite_tracks` prend `track_ids` (1 à 100 IDs) et `max_pages` (100 par défaut, de 1 à 200). Il parcourt les favoris côté serveur par pages de 50 et renvoie seulement les candidats : `favorite`, `not_favorite` ou `unknown`. `complete` et `reason` précisent la couverture. Une erreur ou une limite de parcours conserve les correspondances trouvées et laisse les autres inconnues. Le parcours s'arrête aussi lorsque tous les candidats sont trouvés. Il peut nécessiter plusieurs appels TIDAL, même si la réponse à l'assistant reste courte.
+
+Les aperçus, jetons, confirmations et résultats des modifications ne sont pas compactés. L'outil d'authentification reste inchangé.
+
+Les gains dépendent de la taille des résultats et du client MCP ; ce mode ne garantit pas un pourcentage de réduction des tokens.
+
 ## Développement
 
 Dans l'environnement activé :
